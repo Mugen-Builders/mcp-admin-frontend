@@ -38,6 +38,7 @@ import {
   listSources,
   listTags,
   requestOtp,
+  uploadResourcesCsv,
   updateAdmin,
   updateDocRoute,
   updateRepository,
@@ -56,6 +57,7 @@ import {
   RepositoryPayload,
   Resource,
   ResourcePayload,
+  ResourceUploadSummary,
   ResourceUpdatePayload,
   Source,
   Tag,
@@ -309,6 +311,30 @@ export default function App() {
     }
   }
 
+  async function runMutationWithResult<T>(
+    action: () => Promise<T>,
+    successMessage: string,
+  ): Promise<T> {
+    if (!token) {
+      throw new Error("You must be signed in to continue.");
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await action();
+      await refreshAllData(token);
+      setToast({ tone: "success", message: successMessage });
+      return result;
+    } catch (error) {
+      if (!handleAuthFailure(error)) {
+        setToast({ tone: "error", message: getErrorMessage(error) });
+      }
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleRequestOtp(email: string) {
     setIsAuthSubmitting(true);
     setAuthError(null);
@@ -477,6 +503,12 @@ export default function App() {
                     runMutation(
                       () => deleteResource(token!, resource.id),
                       `${resource.title} deleted.`,
+                    )
+                  }
+                  onUploadResourcesCsv={(file): Promise<ResourceUploadSummary> =>
+                    runMutationWithResult(
+                      () => uploadResourcesCsv(token!, file),
+                      "Resources upload processed.",
                     )
                   }
                 />

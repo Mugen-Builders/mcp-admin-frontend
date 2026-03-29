@@ -10,6 +10,7 @@ import {
   RepositoryPayload,
   Resource,
   ResourcePayload,
+  ResourceUploadSummary,
   ResourceUpdatePayload,
   Source,
   Tag,
@@ -30,8 +31,9 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(init.headers ?? {});
+  const isFormDataBody = typeof FormData !== 'undefined' && init.body instanceof FormData;
 
-  if (!headers.has('Content-Type') && init.body) {
+  if (!headers.has('Content-Type') && init.body && !isFormDataBody) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -90,7 +92,7 @@ export function verifyOtp(email: string, code: string) {
 }
 
 export function listResources(token: string) {
-  return request<Resource[]>('/api/v1/resources/', {}, token);
+  return request<Resource[]>('/api/v1/resources/?limit=1000', {}, token);
 }
 
 export function createResource(token: string, payload: ResourcePayload) {
@@ -107,12 +109,22 @@ export function updateResource(token: string, resourceId: string, payload: Resou
   }, token);
 }
 
+export function uploadResourcesCsv(token: string, file: File) {
+  const body = new FormData();
+  body.append('file', file);
+
+  return request<ResourceUploadSummary>('/api/v1/resources/upload', {
+    method: 'POST',
+    body,
+  }, token);
+}
+
 export function deleteResource(token: string, resourceId: string) {
   return request<void>(`/api/v1/resources/${resourceId}`, { method: 'DELETE' }, token);
 }
 
 export function listRepositories(token: string) {
-  return request<Repository[]>('/api/v1/repositories/', {}, token);
+  return request<Repository[]>('/api/v1/repositories/?limit=1000', {}, token);
 }
 
 export function createRepository(token: string, payload: RepositoryPayload) {
@@ -157,7 +169,7 @@ export function deleteDocRoute(token: string, docRouteId: string) {
 }
 
 export function listSources(token: string) {
-  return request<Source[]>('/api/v1/sources/', {}, token);
+  return request<Source[]>('/api/v1/sources/?limit=1000', {}, token);
 }
 
 export function createSource(token: string, payload: { title: string }) {
@@ -179,7 +191,7 @@ export function deleteSource(token: string, sourceId: string) {
 }
 
 export function listTags(token: string) {
-  return request<Tag[]>('/api/v1/tags/', {}, token);
+  return request<Tag[]>('/api/v1/tags/?limit=1000', {}, token);
 }
 
 export function createTag(token: string, payload: { title: string }) {
@@ -201,7 +213,7 @@ export function deleteTag(token: string, tagId: string) {
 }
 
 export function listAdmins(token: string) {
-  return request<AdminUser[]>('/api/v1/admin/', {}, token);
+  return request<AdminUser[]>('/api/v1/admin/?limit=1000', {}, token);
 }
 
 export function createAdmin(token: string, payload: CreateAdminPayload) {

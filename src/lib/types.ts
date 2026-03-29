@@ -82,6 +82,28 @@ export type DocRoute = {
   created_by: string;
 };
 
+export type ResourceUploadSourceStats = {
+  total_referenced: number;
+  created: number;
+  existing: number;
+};
+
+export type ResourceUploadTagStats = {
+  total_referenced: number;
+  created: number;
+  existing: number;
+};
+
+export type ResourceUploadSummary = {
+  total_urls_found: number;
+  added_count: number;
+  already_exists_count: number;
+  wrongly_encoded_count: number;
+  sources: ResourceUploadSourceStats;
+  tags: ResourceUploadTagStats;
+  row_errors: string[];
+};
+
 export type AuditAction = 'create' | 'edit' | 'delete';
 
 export type AuditEntry = {

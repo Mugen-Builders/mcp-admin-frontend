@@ -1,20 +1,26 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   Database,
   Edit2,
   ExternalLink,
   Eye,
   FileText,
   Filter,
+  FolderTree,
   Lock,
+  LoaderCircle,
   Plus,
+  Tags as TagsIcon,
   Trash2,
+  Upload,
 } from 'lucide-react';
 
 import {
   AdminUser,
   Resource,
   ResourcePayload,
+  ResourceUploadSummary,
   ResourceUpdatePayload,
   Source,
   Tag,
@@ -42,6 +48,7 @@ type DashboardProps = {
   onCreateResource: (payload: ResourcePayload) => Promise<void>;
   onUpdateResource: (resourceId: string, payload: ResourceUpdatePayload) => Promise<void>;
   onDeleteResource: (resource: Resource) => Promise<void>;
+  onUploadResourcesCsv: (file: File) => Promise<ResourceUploadSummary>;
 };
 
 type ResourceFormValues = {
@@ -73,6 +80,287 @@ function TagPill({ tag }: { tag: Tag | undefined }) {
     <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight bg-secondary-container/50 text-on-secondary-container">
       {tag?.title ?? 'Unknown'}
     </span>
+  );
+}
+
+type ResourceUploadModalProps = {
+  open: boolean;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onSubmit: (file: File) => Promise<ResourceUploadSummary>;
+};
+
+function ResourceUploadModal({
+  open,
+  isSubmitting,
+  onClose,
+  onSubmit,
+}: ResourceUploadModalProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSummary, setUploadSummary] = useState<ResourceUploadSummary | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedFile(null);
+      setIsDragging(false);
+      setUploadError(null);
+      setUploadSummary(null);
+    }
+  }, [open]);
+
+  function selectFile(file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    const isCsv = file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv';
+    if (!isCsv) {
+      setSelectedFile(null);
+      setUploadSummary(null);
+      setUploadError('Select a valid CSV file before uploading.');
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadSummary(null);
+    setUploadError(null);
+  }
+
+  function handleFileInput(event: ChangeEvent<HTMLInputElement>) {
+    selectFile(event.target.files?.[0] ?? null);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    selectFile(event.dataTransfer.files?.[0] ?? null);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedFile) {
+      setUploadError('Choose a CSV file to continue.');
+      return;
+    }
+
+    try {
+      const summary = await onSubmit(selectedFile);
+      setUploadSummary(summary);
+      setUploadError(null);
+    } catch (error) {
+      setUploadError(getErrorMessage(error, 'Could not upload the CSV file.'));
+    }
+  }
+
+  const summaryCards = uploadSummary ? [
+    {
+      label: 'Resources / Repositories',
+      value: uploadSummary.total_urls_found,
+      detail: `${uploadSummary.added_count} added`,
+      icon: Database,
+    },
+    {
+      label: 'Sources Summary',
+      value: uploadSummary.sources.total_referenced,
+      detail: `${uploadSummary.sources.created} created / ${uploadSummary.sources.existing} existing`,
+      icon: FolderTree,
+    },
+    {
+      label: 'Tags Summary',
+      value: uploadSummary.tags.total_referenced,
+      detail: `${uploadSummary.tags.created} created / ${uploadSummary.tags.existing} existing`,
+      icon: TagsIcon,
+    },
+  ] : [];
+
+  return (
+    <Modal
+      open={open}
+      title={uploadSummary ? 'Upload Complete' : 'Upload Resources'}
+      description={uploadSummary
+        ? 'Review the import summary below. Partial successes and row-level issues are shown here.'
+        : 'Drop a CSV file here or choose one from your computer to bulk import resources.'}
+      onClose={onClose}
+      maxWidthClassName="max-w-3xl"
+      footer={uploadSummary ? (
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedFile(null);
+              setUploadSummary(null);
+              setUploadError(null);
+              inputRef.current?.click();
+            }}
+            className="px-4 py-2.5 rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
+          >
+            Upload Another
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="resource-upload-form"
+            disabled={isSubmitting || !selectedFile}
+            className="px-4 py-2.5 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-70"
+          >
+            {isSubmitting ? 'Uploading...' : 'Upload CSV'}
+          </button>
+        </div>
+      )}
+    >
+      {isSubmitting && !uploadSummary ? (
+        <div className="py-10 text-center">
+          <LoaderCircle className="w-10 h-10 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-sm font-semibold text-on-surface">Uploading resources...</p>
+          <p className="text-sm text-on-surface-variant mt-1">
+            The CSV is being validated and imported. This may take a moment.
+          </p>
+        </div>
+      ) : uploadSummary ? (
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div>
+                <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Rows Found</p>
+                <p className="text-2xl font-black text-on-surface mt-1">{uploadSummary.total_urls_found}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Added</p>
+                <p className="text-2xl font-black text-primary mt-1">{uploadSummary.added_count}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Already Exists</p>
+                <p className="text-2xl font-black text-on-surface mt-1">{uploadSummary.already_exists_count}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Rows With Issues</p>
+                <p className="text-2xl font-black text-error mt-1">{uploadSummary.wrongly_encoded_count}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {summaryCards.map(({ label, value, detail, icon: Icon }) => (
+              <div key={label} className="rounded-2xl border border-outline-variant/15 bg-surface-container-low p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <p className="text-sm font-bold text-on-surface">{label}</p>
+                </div>
+                <p className="text-2xl font-black text-on-surface">{value}</p>
+                <p className="text-xs text-on-surface-variant mt-2">{detail}</p>
+              </div>
+            ))}
+          </div>
+
+          {uploadSummary.row_errors.length > 0 ? (
+            <div className="rounded-2xl border border-error/15 bg-error-container/10 p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-5 h-5 text-error shrink-0" />
+                <p className="text-sm font-bold text-on-surface">Row-level issues</p>
+              </div>
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {uploadSummary.row_errors.map((error, index) => (
+                  <div key={`${index}-${error}`} className="rounded-xl bg-surface-container-lowest px-4 py-3 text-sm text-on-surface-variant">
+                    {error}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <form id="resource-upload-form" className="space-y-4" onSubmit={handleSubmit}>
+          <InlineAlert message={uploadError} tone="error" />
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={handleFileInput}
+          />
+
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+            }}
+            onDrop={handleDrop}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
+            className={`rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors cursor-pointer ${
+              isDragging
+                ? 'border-primary bg-primary/5'
+                : 'border-outline-variant/30 bg-surface-container-low'
+            }`}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+              <Upload className="w-7 h-7" />
+            </div>
+            <p className="text-base font-bold text-on-surface">
+              Drag and drop your CSV here
+            </p>
+            <p className="text-sm text-on-surface-variant mt-2">
+              or click to browse your computer
+            </p>
+            <p className="text-xs text-outline mt-3">
+              Required columns: title, url, description, is_repository, is_documentation, source, tags
+            </p>
+          </div>
+
+          {selectedFile ? (
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-on-surface truncate">{selectedFile.name}</p>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  {(selectedFile.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-colors shrink-0"
+              >
+                Replace
+              </button>
+            </div>
+          ) : null}
+        </form>
+      )}
+    </Modal>
   );
 }
 
@@ -304,11 +592,13 @@ export function Dashboard({
   onCreateResource,
   onUpdateResource,
   onDeleteResource,
+  onUploadResourcesCsv,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Resource | null>(null);
 
@@ -373,7 +663,7 @@ export function Dashboard({
     setEditingResource(null);
   }
 
-  if (loading) {
+  if (loading && !uploadOpen && !createOpen && !editingResource) {
     return <LoadingState title="Loading resources..." />;
   }
 
@@ -386,14 +676,24 @@ export function Dashboard({
             Manage documents, connectors, and repository-backed entries from the admin API.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="self-start sm:self-auto bg-primary text-on-primary px-5 py-2.5 rounded-lg font-bold text-sm shadow-md hover:bg-primary/90 transition-all flex items-center gap-2 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          New Resource
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setUploadOpen(true)}
+            className="self-start sm:self-auto bg-surface-container-low border border-outline-variant/20 text-on-surface px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-surface-container-high transition-all flex items-center gap-2 shrink-0"
+          >
+            <Upload className="w-4 h-4" />
+            Upload Resources
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="self-start sm:self-auto bg-primary text-on-primary px-5 py-2.5 rounded-lg font-bold text-sm shadow-md hover:bg-primary/90 transition-all flex items-center gap-2 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            New Resource
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -646,6 +946,13 @@ export function Dashboard({
         isSubmitting={submitting}
         onClose={() => setCreateOpen(false)}
         onSubmit={handleCreate}
+      />
+
+      <ResourceUploadModal
+        open={uploadOpen}
+        isSubmitting={submitting}
+        onClose={() => setUploadOpen(false)}
+        onSubmit={onUploadResourcesCsv}
       />
 
       <ResourceFormModal

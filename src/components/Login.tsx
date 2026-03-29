@@ -1,8 +1,8 @@
-import { FormEvent, useState } from 'react';
-import { ArrowRight, Mail } from 'lucide-react';
+import { FormEvent, useState } from "react";
+import { ArrowRight, Mail } from "lucide-react";
 
-import { AuthShell } from './shared/AuthShell';
-import { InlineAlert } from './shared/States';
+import { AuthShell } from "./shared/AuthShell";
+import { InlineAlert } from "./shared/States";
 
 type LoginProps = {
   defaultEmail?: string;
@@ -12,7 +12,13 @@ type LoginProps = {
   onSubmit: (email: string) => Promise<void> | void;
 };
 
-export function Login({ defaultEmail = '', isSubmitting = false, error, info, onSubmit }: LoginProps) {
+export function Login({
+  defaultEmail = "",
+  isSubmitting = false,
+  error,
+  info,
+  onSubmit,
+}: LoginProps) {
   const [email, setEmail] = useState(defaultEmail);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -37,7 +43,10 @@ export function Login({ defaultEmail = '', isSubmitting = false, error, info, on
         <InlineAlert message={info} tone="success" />
 
         <div className="space-y-2">
-          <label className="block text-[11px] font-bold text-outline uppercase tracking-wider" htmlFor="email">
+          <label
+            className="block text-[11px] font-bold text-outline uppercase tracking-wider"
+            htmlFor="email"
+          >
             Work Email
           </label>
           <div className="relative">
@@ -61,7 +70,7 @@ export function Login({ defaultEmail = '', isSubmitting = false, error, info, on
           disabled={isSubmitting}
           className="w-full h-12 bg-gradient-to-br from-[#004ac6] to-[#2563eb] text-on-primary font-semibold rounded-lg shadow-md hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70"
         >
-          {isSubmitting ? 'Sending code...' : 'Send Code'}
+          {isSubmitting ? "Sending code..." : "Send Code"}
           <ArrowRight className="w-5 h-5" />
         </button>
       </form>

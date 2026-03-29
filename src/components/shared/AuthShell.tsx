@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode } from "react";
 
-import { BrandLogo } from './BrandLogo';
+import { BrandLogo } from "./BrandLogo";
 
 type AuthShellProps = {
   eyebrow?: string;
@@ -10,7 +10,13 @@ type AuthShellProps = {
   footer?: ReactNode;
 };
 
-export function AuthShell({ eyebrow = 'Cartesi MCP', title, description, children, footer }: AuthShellProps) {
+export function AuthShell({
+  eyebrow = "Cartesi MCP",
+  title,
+  description,
+  children,
+  footer,
+}: AuthShellProps) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-surface text-on-background relative overflow-hidden">
       <div className="fixed top-6 right-6">
@@ -25,9 +31,13 @@ export function AuthShell({ eyebrow = 'Cartesi MCP', title, description, childre
           <div className="mb-5 flex items-center justify-center">
             <BrandLogo size="lg" showWordmark={false} />
           </div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary mb-3">{eyebrow}</p>
-          <h1 className="text-3xl font-extrabold tracking-tight text-on-surface mb-2">{title}</h1>
-          <p className="text-on-surface-variant text-sm font-medium">{description}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary mb-3">
+            {eyebrow}
+          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-on-surface mb-2">
+            {title}
+          </h1>
+          {/* <p className="text-on-surface-variant text-sm font-medium">{description}</p> */}
         </header>
 
         <section className="w-full bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(23,28,31,0.06)] ring-1 ring-outline-variant/10">
@@ -41,9 +51,13 @@ export function AuthShell({ eyebrow = 'Cartesi MCP', title, description, childre
                 Secure Internal Access
               </p>
               <div className="mt-4 flex gap-4 justify-center">
-                <span className="text-outline text-[11px]">OTP-enabled authentication</span>
+                <span className="text-outline text-[11px]">
+                  OTP-enabled authentication
+                </span>
                 <span className="w-1 h-1 rounded-full bg-outline-variant mt-1.5" />
-                <span className="text-outline text-[11px]">Responsive admin workspace</span>
+                <span className="text-outline text-[11px]">
+                  Responsive admin workspace
+                </span>
               </div>
             </>
           )}
