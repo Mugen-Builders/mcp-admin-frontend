@@ -1,0 +1,3 @@
+window.__APP_CONFIG__ = {
+  ADMIN_API_BASE_URL: "${ADMIN_API_BASE_URL}",
+};

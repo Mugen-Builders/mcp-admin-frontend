@@ -26,7 +26,6 @@ import {
   Tag,
 } from '../lib/types';
 import {
-  canManageRecord,
   formatRelativeTime,
   fromDateTimeInputValue,
   getErrorMessage,
@@ -706,8 +705,8 @@ export function Dashboard({
           <p className="text-2xl font-black text-on-surface mt-1">{resources.filter((item) => item.is_repository).length}</p>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/10 shadow-sm">
-          <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Editable By You</p>
-          <p className="text-2xl font-black text-on-surface mt-1">{resources.filter((item) => canManageRecord(item.created_by, currentAdmin)).length}</p>
+          <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Editable</p>
+          <p className="text-2xl font-black text-on-surface mt-1">{resources.length}</p>
         </div>
       </div>
 
@@ -792,7 +791,7 @@ export function Dashboard({
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
                   {filtered.map((resource) => {
-                    const locked = !canManageRecord(resource.created_by, currentAdmin);
+                    const locked = false;
                     const linkedTags = resource.tag_ids.slice(0, 3).map((tagId) => tagMap[tagId]);
                     const overflow = Math.max(resource.tag_ids.length - linkedTags.length, 0);
 
@@ -877,7 +876,7 @@ export function Dashboard({
 
           <div className="md:hidden space-y-3">
             {filtered.map((resource) => {
-              const locked = !canManageRecord(resource.created_by, currentAdmin);
+              const locked = false;
               const linkedTags = resource.tag_ids.slice(0, 2).map((tagId) => tagMap[tagId]);
 
               return (

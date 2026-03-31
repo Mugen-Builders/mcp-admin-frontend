@@ -11,13 +11,22 @@ import {
   Resource,
   ResourcePayload,
   ResourceUploadSummary,
+  DocRouteUploadSummary,
   ResourceUpdatePayload,
   Source,
   Tag,
   UpdateAdminPayload,
 } from './types';
 
-const API_BASE_URL = (import.meta.env.VITE_ADMIN_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+const runtimeConfig =
+  typeof window !== 'undefined' && '__APP_CONFIG__' in window
+    ? (window as Window & {__APP_CONFIG__?: {ADMIN_API_BASE_URL?: string}}).__APP_CONFIG__
+    : undefined;
+
+const API_BASE_URL = (runtimeConfig?.ADMIN_API_BASE_URL ?? import.meta.env.VITE_ADMIN_API_BASE_URL ?? 'http://localhost:8000').replace(
+  /\/$/,
+  '',
+);
 
 export class ApiError extends Error {
   status: number;
@@ -154,6 +163,17 @@ export function createDocRoute(token: string, payload: DocRoutePayload) {
   return request<DocRoute>('/api/v1/doc-routes/', {
     method: 'POST',
     body: JSON.stringify(payload),
+  }, token);
+}
+
+export function uploadDocRoutesCsv(token: string, resourceId: string, file: File) {
+  const body = new FormData();
+  body.append('resource_id', resourceId);
+  body.append('file', file);
+
+  return request<DocRouteUploadSummary>('/api/v1/doc-routes/upload', {
+    method: 'POST',
+    body,
   }, token);
 }
 

@@ -104,6 +104,15 @@ export type ResourceUploadSummary = {
   row_errors: string[];
 };
 
+export type DocRouteUploadSummary = {
+  rows_processed: number;
+  routes_added: number;
+  routes_skipped_existing: number;
+  sections_added: number;
+  wrongly_encoded_count: number;
+  row_errors: string[];
+};
+
 export type AuditAction = 'create' | 'edit' | 'delete';
 
 export type AuditEntry = {

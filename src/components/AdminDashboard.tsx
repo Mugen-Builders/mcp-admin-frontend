@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import {
   CheckCircle2,
   Edit2,
+  Lock,
   Mail,
   Plus,
   Shield,
@@ -36,6 +37,10 @@ const PERMISSIONS = ['OTP Login', 'Admin CRUD', 'Resource Governance', 'Audit Ac
 
 function canEditTarget(currentAdmin: AdminUser, target: AdminUser) {
   return currentAdmin.is_superuser || currentAdmin.id === target.id;
+}
+
+function canDeleteTarget(currentAdmin: AdminUser) {
+  return currentAdmin.is_superuser;
 }
 
 export function AdminDashboard({
@@ -78,6 +83,11 @@ export function AdminDashboard({
         });
         setEditingAdmin(null);
       } else {
+        if (!currentAdmin.is_superuser) {
+          setFormError('Only a super admin can invite a new administrator.');
+          return;
+        }
+
         await onCreateAdmin({
           email: formState.email.trim(),
           is_superuser: formState.is_superuser,
@@ -120,19 +130,26 @@ export function AdminDashboard({
                 placeholder="Search by email..."
                 className="bg-surface-container-low border border-outline-variant/20 rounded-lg px-4 py-2 text-sm w-56"
               />
-              {currentAdmin.is_superuser ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreateOpen(true);
-                    setFormState({ email: '', is_superuser: false, is_active: true });
-                  }}
-                  className="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Invite
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateOpen(true);
+                  setFormState({ email: '', is_superuser: false, is_active: true });
+                  setFormError(
+                    currentAdmin.is_superuser
+                      ? null
+                      : 'Only a super admin can invite a new administrator.',
+                  );
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 ${
+                  currentAdmin.is_superuser
+                    ? 'bg-primary text-on-primary'
+                    : 'bg-surface-container-high text-on-surface-variant border border-outline-variant/20'
+                }`}
+              >
+                {currentAdmin.is_superuser ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                Invite
+              </button>
             </div>
           </div>
 
@@ -146,6 +163,7 @@ export function AdminDashboard({
               <div className="divide-y divide-outline-variant/10">
                 {filteredAdmins.map((admin) => {
                   const editable = canEditTarget(currentAdmin, admin);
+                  const deletable = canDeleteTarget(currentAdmin);
 
                   return (
                     <div key={admin.id} className="p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-surface-container-low transition-colors">
@@ -198,7 +216,7 @@ export function AdminDashboard({
                         </button>
                         <button
                           type="button"
-                          disabled={!editable}
+                          disabled={!deletable}
                           onClick={() => setDeleteTarget(admin)}
                           className="p-2 rounded-lg text-outline hover:text-error hover:bg-error-container transition-all disabled:opacity-50"
                         >

@@ -34,6 +34,7 @@ import {
   listAudits,
   listDocRoutes,
   listRepositories,
+  uploadDocRoutesCsv,
   listResources,
   listSources,
   listTags,
@@ -53,6 +54,7 @@ import {
   DocRoute,
   DocRoutePayload,
   DocRouteUpdatePayload,
+  DocRouteUploadSummary,
   Repository,
   RepositoryPayload,
   Resource,
@@ -75,6 +77,14 @@ type ToastState = {
 } | null;
 
 const INVALID_ADMIN_EMAIL_DETAIL = "Invalid or inactive admin email.";
+
+function ensureArray<T>(value: unknown, label: string): T[] {
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+
+  throw new Error(`Invalid ${label} response received from the server.`);
+}
 
 function repositoryToResource(repository: Repository): Resource {
   return {
@@ -206,11 +216,11 @@ export default function App() {
         listAdmins(currentToken),
       ]);
 
-      setSources(sourcesData);
-      setTags(tagsData);
-      setResources(resourcesData);
-      setRepositories(repositoriesData);
-      setAdmins(adminsData);
+      setSources(ensureArray<Source>(sourcesData, "sources"));
+      setTags(ensureArray<Tag>(tagsData, "tags"));
+      setResources(ensureArray<Resource>(resourcesData, "resources"));
+      setRepositories(ensureArray<Repository>(repositoriesData, "repositories"));
+      setAdmins(ensureArray<AdminUser>(adminsData, "admins"));
     } catch (error) {
       if (!handleAuthFailure(error)) {
         setToast({
@@ -255,6 +265,41 @@ export default function App() {
       }
     } finally {
       setIsLoadingDocRoutes(false);
+    }
+  }
+
+  async function handleUploadDocRoutesCsv(
+    file: File,
+  ): Promise<DocRouteUploadSummary> {
+    if (!token || !selectedResource) {
+      throw new Error("You must be signed in to continue.");
+    }
+
+    setIsSubmitting(true);
+    try {
+      const summary = await uploadDocRoutesCsv(
+        token,
+        selectedResource.id,
+        file,
+      );
+      await refreshDocRoutes(token, selectedResource.id);
+      await refreshAudits(token, selectedResource.id);
+      await refreshAllData(token);
+      setToast({
+        tone: "success",
+        message: "Documentation routes import completed.",
+      });
+      return summary;
+    } catch (error) {
+      if (!handleAuthFailure(error)) {
+        setToast({
+          tone: "error",
+          message: getErrorMessage(error),
+        });
+      }
+      throw error;
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -572,6 +617,7 @@ export default function App() {
                       ]);
                     }, `${docRoute.name} deleted.`)
                   }
+                  onUploadDocRoutesCsv={handleUploadDocRoutesCsv}
                 />
               ) : null}
 

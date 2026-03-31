@@ -4,7 +4,6 @@ import {
   Edit2,
   ExternalLink,
   Eye,
-  Lock,
   Plus,
   RefreshCw,
   Trash2,
@@ -12,7 +11,6 @@ import {
 
 import { AdminUser, Repository, RepositoryPayload, Source, Tag } from '../lib/types';
 import {
-  canManageRecord,
   formatRelativeTime,
   getErrorMessage,
 } from '../lib/utils';
@@ -156,7 +154,7 @@ export function Repositories({
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/10 shadow-sm">
           <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Editable</p>
-          <p className="text-2xl font-black text-on-surface mt-1">{repositories.filter((repository) => canManageRecord(repository.created_by, currentAdmin)).length}</p>
+          <p className="text-2xl font-black text-on-surface mt-1">{repositories.length}</p>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/10 shadow-sm">
           <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Filtered Results</p>
@@ -202,7 +200,7 @@ export function Repositories({
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
                   {filtered.map((repository) => {
-                    const locked = !canManageRecord(repository.created_by, currentAdmin);
+                    const locked = false;
                     const linkedTags = repository.tag_ids.slice(0, 3).map((tagId) => tagMap[tagId]);
                     const overflow = Math.max(repository.tag_ids.length - linkedTags.length, 0);
 
@@ -211,7 +209,7 @@ export function Repositories({
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${locked ? 'bg-surface-container-high text-outline' : 'bg-primary/10 text-primary'}`}>
-                              {locked ? <Lock className="w-5 h-5" /> : <Database className="w-5 h-5" />}
+                              <Database className="w-5 h-5" />
                             </div>
                             <div className="min-w-0">
                               <button
@@ -296,15 +294,15 @@ export function Repositories({
 
           <div className="md:hidden space-y-3">
             {filtered.map((repository) => {
-              const locked = !canManageRecord(repository.created_by, currentAdmin);
+              const locked = false;
               const linkedTags = repository.tag_ids.slice(0, 2).map((tagId) => tagMap[tagId]);
 
               return (
                 <div key={repository.id} className="bg-white rounded-xl border border-outline-variant/20 shadow-sm overflow-hidden">
                   <div className="p-4">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${locked ? 'bg-surface-container-high text-outline' : 'bg-primary/10 text-primary'}`}>
-                        {locked ? <Lock className="w-5 h-5" /> : <Database className="w-5 h-5" />}
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
+                        <Database className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-on-surface leading-tight">{repository.title}</p>

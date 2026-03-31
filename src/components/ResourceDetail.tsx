@@ -22,13 +22,13 @@ import {
   DocRoute,
   DocRoutePayload,
   DocRouteUpdatePayload,
+  DocRouteUploadSummary,
   Resource,
   ResourceUpdatePayload,
   Source,
   Tag,
 } from '../lib/types';
 import {
-  canManageRecord,
   formatAuditChange,
   formatDateTime,
   formatRelativeTime,
@@ -56,6 +56,7 @@ type ResourceDetailProps = {
   onCreateDocRoute: (payload: DocRoutePayload) => Promise<void>;
   onUpdateDocRoute: (docRouteId: string, payload: DocRouteUpdatePayload) => Promise<void>;
   onDeleteDocRoute: (docRoute: DocRoute) => Promise<void>;
+  onUploadDocRoutesCsv?: (file: File) => Promise<DocRouteUploadSummary>;
 };
 
 type DetailFormValues = {
@@ -111,6 +112,7 @@ export function ResourceDetail({
   onCreateDocRoute,
   onUpdateDocRoute,
   onDeleteDocRoute,
+  onUploadDocRoutesCsv,
 }: ResourceDetailProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState<DetailFormValues>(buildFormValues(resource));
@@ -125,7 +127,7 @@ export function ResourceDetail({
   const [editingDocRoute, setEditingDocRoute] = useState<DocRoute | null>(null);
   const [deleteDocRouteTarget, setDeleteDocRouteTarget] = useState<DocRoute | null>(null);
 
-  const editable = canManageRecord(resource.created_by, currentAdmin);
+  const editable = Boolean(currentAdmin);
   const source = sources.find((item) => item.id === resource.source_id);
   const linkedTags = tags.filter((tag) => resource.tag_ids.includes(tag.id));
   const adminNames = useMemo(
@@ -723,6 +725,11 @@ export function ResourceDetail({
         resource={resource}
         sourceTitle={source?.title ?? 'Unknown source'}
         docRoutes={docRoutes}
+        canUpload={editable}
+        isUploadingDocRoutes={isSubmitting}
+        onUploadDocRoutesCsv={
+          resource.is_documentation ? onUploadDocRoutesCsv : undefined
+        }
         onClose={() => setDocsViewerOpen(false)}
       />
 
