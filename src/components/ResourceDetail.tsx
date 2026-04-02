@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -37,6 +37,7 @@ import {
 } from '../lib/utils';
 import { DocsViewerModal } from './DocsViewerModal';
 import { ConfirmDialog, Modal } from './shared/Modal';
+import { TagMultiSelect } from './shared/TagMultiSelect';
 import { EmptyState, InlineAlert, LoadingState } from './shared/States';
 
 type ResourceDetailProps = {
@@ -126,6 +127,7 @@ export function ResourceDetail({
   const [docRouteFormError, setDocRouteFormError] = useState<string | null>(null);
   const [editingDocRoute, setEditingDocRoute] = useState<DocRoute | null>(null);
   const [deleteDocRouteTarget, setDeleteDocRouteTarget] = useState<DocRoute | null>(null);
+  const [activeDocSectionIndex, setActiveDocSectionIndex] = useState(0);
 
   const editable = Boolean(currentAdmin);
   const source = sources.find((item) => item.id === resource.source_id);
@@ -146,6 +148,14 @@ export function ResourceDetail({
       ).sort(([left], [right]) => left.localeCompare(right)),
     [docRoutes],
   );
+
+  const docSectionCount = groupedDocRoutes.length;
+
+  useEffect(() => {
+    setActiveDocSectionIndex((index) =>
+      Math.min(Math.max(0, index), Math.max(0, docSectionCount - 1)),
+    );
+  }, [docSectionCount]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -354,60 +364,166 @@ export function ResourceDetail({
                   description="Create a subsection route to structure this documentation resource."
                 />
               ) : (
-                <div className="space-y-4">
-                  {groupedDocRoutes.map(([section, sectionRoutes]) => (
-                    <div key={section} className="rounded-xl bg-surface-container-low p-4 border border-outline-variant/10">
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <div>
-                          <p className="text-sm font-bold text-on-surface">{section}</p>
-                          <p className="text-xs text-outline mt-1">{sectionRoutes.length} subsection route(s)</p>
-                        </div>
+                <div className="space-y-5">
+                  <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-primary/[0.07] via-surface-container-low to-secondary-container/[0.06] p-4 sm:p-5 ring-1 ring-outline-variant/15 shadow-sm">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1.56fr)_minmax(0,0.72fr)] md:items-center md:gap-4">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveDocSectionIndex((index) => Math.max(0, index - 1))
+                        }
+                        disabled={activeDocSectionIndex <= 0}
+                        className="flex min-h-[3.5rem] flex-col items-start justify-center rounded-lg border border-outline-variant/15 bg-white/45 px-3 py-2.5 text-left shadow-sm transition-all duration-300 ease-out hover:border-primary/25 hover:bg-white/85 hover:shadow-md enabled:hover:scale-[1.02] enabled:active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 md:mx-auto md:w-full md:max-w-[13.5rem] md:scale-[0.94]"
+                        aria-label={
+                          activeDocSectionIndex > 0
+                            ? `Go to previous section: ${groupedDocRoutes[activeDocSectionIndex - 1]?.[0] ?? ''}`
+                            : 'No previous section'
+                        }
+                      >
+                        <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-outline/90">
+                          Previous
+                        </span>
+                        <span className="mt-0.5 line-clamp-2 text-xs font-semibold leading-snug text-on-surface/90">
+                          {activeDocSectionIndex > 0
+                            ? (groupedDocRoutes[activeDocSectionIndex - 1]?.[0] ?? '—')
+                            : '—'}
+                        </span>
+                      </button>
+
+                      <div
+                        key={activeDocSectionIndex}
+                        className="doc-section-header-animate relative z-[1] min-w-0 space-y-0.5 rounded-lg border border-primary/18 bg-white/55 px-3 py-2.5 text-center shadow-sm ring-1 ring-primary/12 md:px-3.5 md:py-3"
+                      >
+                        <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-outline md:text-[9px]">
+                          Current section
+                        </p>
+                        <p className="text-base font-black leading-tight tracking-tight text-on-surface md:text-lg">
+                          {groupedDocRoutes[activeDocSectionIndex]?.[0] ?? '—'}
+                        </p>
+                        <p className="text-[10px] leading-snug text-on-surface-variant tabular-nums md:text-[11px]">
+                          {activeDocSectionIndex + 1} of {docSectionCount} sections ·{' '}
+                          {groupedDocRoutes[activeDocSectionIndex]?.[1].length ?? 0} route(s) here
+                        </p>
                       </div>
 
-                      <div className="space-y-3">
-                        {sectionRoutes.map((docRoute) => (
-                          <div key={docRoute.id} className="rounded-lg bg-surface-container-lowest px-4 py-3 border border-outline-variant/10">
-                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-on-surface">{docRoute.name}</p>
-                                <p className="text-xs text-on-surface-variant mt-1">
-                                  {docRoute.description || 'No route description provided.'}
-                                </p>
-                                <a
-                                  href={docRoute.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mt-2 break-all"
-                                >
-                                  <span className="break-all">{docRoute.url}</span>
-                                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                                </a>
-                              </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveDocSectionIndex((index) =>
+                            Math.min(docSectionCount - 1, index + 1),
+                          )
+                        }
+                        disabled={activeDocSectionIndex >= docSectionCount - 1}
+                        className="flex min-h-[3.5rem] flex-col items-end justify-center rounded-lg border border-outline-variant/15 bg-white/45 px-3 py-2.5 text-right shadow-sm transition-all duration-300 ease-out hover:border-primary/25 hover:bg-white/85 hover:shadow-md enabled:hover:scale-[1.02] enabled:active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 md:mx-auto md:w-full md:max-w-[13.5rem] md:scale-[0.94]"
+                        aria-label={
+                          activeDocSectionIndex < docSectionCount - 1
+                            ? `Go to next section: ${groupedDocRoutes[activeDocSectionIndex + 1]?.[0] ?? ''}`
+                            : 'No next section'
+                        }
+                      >
+                        <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-outline/90">
+                          Next
+                        </span>
+                        <span className="mt-0.5 line-clamp-2 text-xs font-semibold leading-snug text-on-surface/90">
+                          {activeDocSectionIndex < docSectionCount - 1
+                            ? (groupedDocRoutes[activeDocSectionIndex + 1]?.[0] ?? '—')
+                            : '—'}
+                        </span>
+                      </button>
+                    </div>
 
-                              <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                  type="button"
-                                  disabled={!editable}
-                                  onClick={() => openEditDocRouteModal(docRoute)}
-                                  className="px-2.5 py-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-50"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={!editable}
-                                  onClick={() => setDeleteDocRouteTarget(docRoute)}
-                                  className="px-2.5 py-2 rounded-lg border border-outline-variant text-error hover:bg-error/5 transition-colors disabled:opacity-50"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                    <div className="relative overflow-hidden rounded-xl">
+                      <div
+                        className="flex transition-[transform] duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none will-change-transform"
+                        style={{
+                          width: `${docSectionCount * 100}%`,
+                          transform: `translateX(-${(activeDocSectionIndex * 100) / docSectionCount}%)`,
+                        }}
+                      >
+                        {groupedDocRoutes.map(([section, sectionRoutes]) => (
+                          <div
+                            key={section}
+                            className="shrink-0 px-0.5 box-border"
+                            style={{ width: `${100 / docSectionCount}%` }}
+                          >
+                            <div className="rounded-xl bg-surface-container-low/90 backdrop-blur-sm p-4 sm:p-5 border border-outline-variant/15 max-h-[min(33.6rem,62.5vh)] overflow-y-auto shadow-inner ring-1 ring-black/[0.03]">
+                              <div className="mb-4 flex items-start justify-between gap-3 border-b border-outline-variant/10 pb-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-on-surface">{section}</p>
+                                  <p className="text-xs text-outline mt-0.5">
+                                    {sectionRoutes.length} subsection route(s)
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="space-y-3">
+                                {sectionRoutes.map((docRoute) => (
+                                  <div
+                                    key={docRoute.id}
+                                    className="rounded-lg bg-surface-container-lowest px-4 py-3 border border-outline-variant/10 transition-colors hover:border-outline-variant/25"
+                                  >
+                                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-on-surface">{docRoute.name}</p>
+                                        <p className="text-xs text-on-surface-variant mt-1">
+                                          {docRoute.description || 'No route description provided.'}
+                                        </p>
+                                        <a
+                                          href={docRoute.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mt-2 break-all"
+                                        >
+                                          <span className="break-all">{docRoute.url}</span>
+                                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                        </a>
+                                      </div>
+
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                          type="button"
+                                          disabled={!editable}
+                                          onClick={() => openEditDocRouteModal(docRoute)}
+                                          className="px-2.5 py-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-50"
+                                        >
+                                          <Edit2 className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={!editable}
+                                          onClick={() => setDeleteDocRouteTarget(docRoute)}
+                                          className="px-2.5 py-2 rounded-lg border border-outline-variant text-error hover:bg-error/5 transition-colors disabled:opacity-50"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
-                  ))}
+
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-1" role="tablist" aria-label="Documentation sections">
+                      {groupedDocRoutes.map(([section], index) => (
+                        <button
+                          key={section}
+                          type="button"
+                          role="tab"
+                          aria-selected={index === activeDocSectionIndex}
+                          onClick={() => setActiveDocSectionIndex(index)}
+                          className={`min-h-[9px] rounded-full transition-all duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                            index === activeDocSectionIndex
+                              ? 'w-10 bg-primary shadow-sm'
+                              : 'w-2.5 bg-outline-variant/35 hover:bg-outline-variant/60 hover:w-4'
+                          }`}
+                          aria-label={`Show section: ${section}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -610,26 +726,16 @@ export function ResourceDetail({
           </label>
 
           <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-outline">Tags</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {tags.map((tag) => (
-                <label key={tag.id} className="flex items-center gap-3 rounded-xl bg-surface-container-low px-4 py-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={formValues.tag_ids.includes(tag.id)}
-                    onChange={(event) =>
-                      setFormValues((current) => ({
-                        ...current,
-                        tag_ids: event.target.checked
-                          ? [...current.tag_ids, tag.id]
-                          : current.tag_ids.filter((tagId) => tagId !== tag.id),
-                      }))
-                    }
-                  />
-                  <span>{tag.title}</span>
-                </label>
-              ))}
-            </div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-outline" htmlFor="resource-detail-tags-search">
+              Tags
+            </label>
+            <TagMultiSelect
+              key={resource.id}
+              id="resource-detail-tags-search"
+              tags={tags}
+              selectedIds={formValues.tag_ids}
+              onChange={(tag_ids) => setFormValues((current) => ({ ...current, tag_ids }))}
+            />
           </div>
         </form>
       </Modal>
