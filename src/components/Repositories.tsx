@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   Database,
   Edit2,
@@ -10,11 +10,14 @@ import {
 } from 'lucide-react';
 
 import { AdminUser, Repository, RepositoryPayload, Source, Tag } from '../lib/types';
+import { useClientListPagination } from '../lib/useClientListPagination';
 import {
   formatRelativeTime,
   getErrorMessage,
 } from '../lib/utils';
 import { ConfirmDialog, Modal } from './shared/Modal';
+import { ListPaginationFooter } from './shared/ListPaginationFooter';
+import { TagMultiSelect } from './shared/TagMultiSelect';
 import { EmptyState, InlineAlert, LoadingState } from './shared/States';
 
 type RepositoriesProps = {
@@ -90,6 +93,25 @@ export function Repositories({
     ? repositories.filter((repository) => repository.source_id === activeSource)
     : repositories;
 
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    safePage,
+    totalPages,
+    sliceStart,
+    rangeEnd,
+    sliceItems,
+    totalItems: filteredTotal,
+  } = useClientListPagination(filtered.length);
+
+  const paginatedFiltered = sliceItems(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeSource, setPage]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -153,8 +175,10 @@ export function Repositories({
           <p className="text-2xl font-black text-on-surface mt-1">{repositories.length}</p>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/10 shadow-sm">
-          <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Editable</p>
-          <p className="text-2xl font-black text-on-surface mt-1">{repositories.length}</p>
+          <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Created by you</p>
+          <p className="text-2xl font-black text-on-surface mt-1">
+            {repositories.filter((r) => r.created_by === currentAdmin.id).length}
+          </p>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/10 shadow-sm">
           <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Filtered Results</p>
@@ -185,10 +209,9 @@ export function Repositories({
           description="Adjust the source filter or connect a new repository."
         />
       ) : (
-        <>
-          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+        <div className="bg-white rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left border-collapse">
                 <thead className="bg-surface-container-low border-b border-outline-variant/30">
                   <tr>
                     <th className="px-6 py-4 text-[11px] text-outline uppercase tracking-widest font-bold">Title</th>
@@ -199,7 +222,7 @@ export function Repositories({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
-                  {filtered.map((repository) => {
+                  {paginatedFiltered.map((repository) => {
                     const locked = false;
                     const linkedTags = repository.tag_ids.slice(0, 3).map((tagId) => tagMap[tagId]);
                     const overflow = Math.max(repository.tag_ids.length - linkedTags.length, 0);
@@ -289,11 +312,10 @@ export function Repositories({
                   })}
                 </tbody>
               </table>
-            </div>
           </div>
 
-          <div className="md:hidden space-y-3">
-            {filtered.map((repository) => {
+          <div className="md:hidden space-y-3 p-3 sm:p-4 bg-surface-container-low/20">
+            {paginatedFiltered.map((repository) => {
               const locked = false;
               const linkedTags = repository.tag_ids.slice(0, 2).map((tagId) => tagMap[tagId]);
 
@@ -352,7 +374,20 @@ export function Repositories({
               );
             })}
           </div>
-        </>
+
+          <ListPaginationFooter
+            entityLabel="repositories"
+            totalItems={filteredTotal}
+            sliceStart={sliceStart}
+            rangeEnd={rangeEnd}
+            page={page}
+            safePage={safePage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
       )}
 
       <Modal
@@ -440,26 +475,16 @@ export function Repositories({
           </div>
 
           <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-outline">Tags</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {tags.map((tag) => (
-                <label key={tag.id} className="flex items-center gap-3 rounded-xl bg-surface-container-low px-4 py-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={values.tag_ids.includes(tag.id)}
-                    onChange={(event) =>
-                      setValues((current) => ({
-                        ...current,
-                        tag_ids: event.target.checked
-                          ? [...current.tag_ids, tag.id]
-                          : current.tag_ids.filter((tagId) => tagId !== tag.id),
-                      }))
-                    }
-                  />
-                  <span>{tag.title}</span>
-                </label>
-              ))}
-            </div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-outline" htmlFor="repository-form-tags-search">
+              Tags
+            </label>
+            <TagMultiSelect
+              key={editingRepository?.id ?? 'repository-form-new'}
+              id="repository-form-tags-search"
+              tags={tags}
+              selectedIds={values.tag_ids}
+              onChange={(tag_ids) => setValues((current) => ({ ...current, tag_ids }))}
+            />
           </div>
 
           <label className="flex items-center gap-3 rounded-xl bg-surface-container-low px-4 py-3 text-sm">

@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { AlertTriangle, MoreVertical, Plus, Tags as TagsIcon, Trash2 } from 'lucide-react';
 
 import { AdminUser, Resource, Tag } from '../lib/types';
+import { useClientListPagination } from '../lib/useClientListPagination';
 import {
   canManageRecord,
   formatDateTime,
@@ -9,6 +10,7 @@ import {
   initialsFromEmail,
 } from '../lib/utils';
 import { ConfirmDialog, Modal } from './shared/Modal';
+import { ListPaginationFooter } from './shared/ListPaginationFooter';
 import { EmptyState, InlineAlert, LoadingState } from './shared/States';
 
 type TagsProps = {
@@ -39,6 +41,21 @@ export function Tags({
   const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
   const [title, setTitle] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    safePage,
+    totalPages,
+    sliceStart,
+    rangeEnd,
+    sliceItems,
+    totalItems: totalTags,
+  } = useClientListPagination(tags.length);
+
+  const paginatedTags = sliceItems(tags);
 
   const usageCounts = useMemo(
     () => Object.fromEntries(tags.map((tag) => [tag.id, resources.filter((resource) => resource.tag_ids.includes(tag.id)).length])),
@@ -161,7 +178,7 @@ export function Tags({
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
-                {tags.map((tag) => {
+                {paginatedTags.map((tag) => {
                   const editable = canManageRecord(tag.created_by, currentAdmin);
                   const ownerName = adminNames[tag.created_by] ?? tag.created_by;
 
@@ -232,7 +249,7 @@ export function Tags({
           </div>
 
           <div className="md:hidden divide-y divide-outline-variant/10">
-            {tags.map((tag) => {
+            {paginatedTags.map((tag) => {
               const editable = canManageRecord(tag.created_by, currentAdmin);
               const ownerName = adminNames[tag.created_by] ?? tag.created_by;
 
@@ -275,28 +292,18 @@ export function Tags({
             })}
           </div>
 
-          <div className="px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low/35 flex items-center justify-between">
-            <span className="text-sm text-on-surface-variant">
-              Showing 1 to {tags.length} of {tags.length} tags
-            </span>
-            <div className="hidden sm:flex items-center gap-2">
-              <button
-                className="w-9 h-9 rounded-lg border border-outline-variant/30 text-outline bg-white/80"
-                disabled
-              >
-                &lt;
-              </button>
-              <button className="w-9 h-9 rounded-lg bg-primary text-white font-semibold">
-                1
-              </button>
-              <button
-                className="w-9 h-9 rounded-lg border border-outline-variant/30 text-on-surface bg-white/80"
-                disabled
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
+          <ListPaginationFooter
+            entityLabel="tags"
+            totalItems={totalTags}
+            sliceStart={sliceStart}
+            rangeEnd={rangeEnd}
+            page={page}
+            safePage={safePage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       )}
 

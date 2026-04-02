@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { AdminUser, Resource, Source } from "../lib/types";
+import { useClientListPagination } from "../lib/useClientListPagination";
 import {
   canManageRecord,
   formatDateTime,
@@ -15,6 +16,7 @@ import {
   initialsFromEmail,
 } from "../lib/utils";
 import { ConfirmDialog, Modal } from "./shared/Modal";
+import { ListPaginationFooter } from "./shared/ListPaginationFooter";
 import { EmptyState, InlineAlert, LoadingState } from "./shared/States";
 
 type SourcesProps = {
@@ -45,6 +47,21 @@ export function Sources({
   const [deleteTarget, setDeleteTarget] = useState<Source | null>(null);
   const [title, setTitle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    safePage,
+    totalPages,
+    sliceStart,
+    rangeEnd,
+    sliceItems,
+    totalItems: totalSources,
+  } = useClientListPagination(sources.length);
+
+  const paginatedSources = sliceItems(sources);
 
   const resourceCounts = useMemo(
     () =>
@@ -185,7 +202,7 @@ export function Sources({
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
-                {sources.map((source) => {
+                {paginatedSources.map((source) => {
                   const editable = canManageRecord(
                     source.created_by,
                     currentAdmin,
@@ -260,7 +277,7 @@ export function Sources({
           </div>
 
           <div className="md:hidden divide-y divide-outline-variant/10">
-            {sources.map((source) => {
+            {paginatedSources.map((source) => {
               const editable = canManageRecord(source.created_by, currentAdmin);
               const ownerName =
                 adminNames[source.created_by] ?? source.created_by;
@@ -306,28 +323,18 @@ export function Sources({
             })}
           </div>
 
-          <div className="px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low/35 flex items-center justify-between">
-            <span className="text-sm text-on-surface-variant">
-              Showing 1 to {sources.length} of {sources.length} sources
-            </span>
-            <div className="hidden sm:flex items-center gap-2">
-              <button
-                className="w-9 h-9 rounded-lg border border-outline-variant/30 text-outline bg-white/80"
-                disabled
-              >
-                &lt;
-              </button>
-              <button className="w-9 h-9 rounded-lg bg-primary text-white font-semibold">
-                1
-              </button>
-              <button
-                className="w-9 h-9 rounded-lg border border-outline-variant/30 text-on-surface bg-white/80"
-                disabled
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
+          <ListPaginationFooter
+            entityLabel="sources"
+            totalItems={totalSources}
+            sliceStart={sliceStart}
+            rangeEnd={rangeEnd}
+            page={page}
+            safePage={safePage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       )}
 

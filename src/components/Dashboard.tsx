@@ -31,7 +31,10 @@ import {
   getErrorMessage,
   toDateTimeInputValue,
 } from '../lib/utils';
+import { useClientListPagination } from '../lib/useClientListPagination';
 import { ConfirmDialog, Modal } from './shared/Modal';
+import { ListPaginationFooter } from './shared/ListPaginationFooter';
+import { TagMultiSelect } from './shared/TagMultiSelect';
 import { EmptyState, InlineAlert, LoadingState } from './shared/States';
 
 type TabFilter = 'all' | 'repositories' | 'links';
@@ -530,26 +533,16 @@ function ResourceFormModal({
           ) : null}
 
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-outline">Tags</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {tags.map((tag) => (
-                <label key={tag.id} className="flex items-center gap-3 rounded-xl bg-surface-container-low px-4 py-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={values.tag_ids.includes(tag.id)}
-                    onChange={(event) =>
-                      setValues((current) => ({
-                        ...current,
-                        tag_ids: event.target.checked
-                          ? [...current.tag_ids, tag.id]
-                          : current.tag_ids.filter((tagId) => tagId !== tag.id),
-                      }))
-                    }
-                  />
-                  <span>{tag.title}</span>
-                </label>
-              ))}
-            </div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-outline" htmlFor="resource-form-tags-search">
+              Tags
+            </label>
+            <TagMultiSelect
+              key={resource?.id ?? 'resource-form-new'}
+              id="resource-form-tags-search"
+              tags={tags}
+              selectedIds={values.tag_ids}
+              onChange={(tag_ids) => setValues((current) => ({ ...current, tag_ids }))}
+            />
           </div>
 
           <label className="md:col-span-2 flex items-center gap-3 rounded-xl bg-surface-container-low px-4 py-3 text-sm">
@@ -632,6 +625,25 @@ export function Dashboard({
     return haystack.includes(query);
   });
 
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    safePage,
+    totalPages,
+    sliceStart,
+    rangeEnd,
+    sliceItems,
+    totalItems: filteredTotal,
+  } = useClientListPagination(filtered.length);
+
+  const paginatedFiltered = sliceItems(filtered);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, activeSource, setPage]);
+
   async function handleCreate(values: ResourceFormValues) {
     await onCreateResource({
       title: values.title.trim(),
@@ -705,8 +717,10 @@ export function Dashboard({
           <p className="text-2xl font-black text-on-surface mt-1">{resources.filter((item) => item.is_repository).length}</p>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/10 shadow-sm">
-          <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Editable</p>
-          <p className="text-2xl font-black text-on-surface mt-1">{resources.length}</p>
+          <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Docs / Links</p>
+          <p className="text-2xl font-black text-on-surface mt-1">
+            {resources.filter((item) => !item.is_repository).length}
+          </p>
         </div>
       </div>
 
@@ -776,10 +790,9 @@ export function Dashboard({
           )}
         />
       ) : (
-        <>
-          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+        <div className="bg-white rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left border-collapse">
                 <thead className="bg-surface-container-low border-b border-outline-variant/30">
                   <tr>
                     <th className="px-6 py-4 text-[11px] text-outline uppercase tracking-widest font-bold">Title</th>
@@ -790,7 +803,7 @@ export function Dashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
-                  {filtered.map((resource) => {
+                  {paginatedFiltered.map((resource) => {
                     const locked = false;
                     const linkedTags = resource.tag_ids.slice(0, 3).map((tagId) => tagMap[tagId]);
                     const overflow = Math.max(resource.tag_ids.length - linkedTags.length, 0);
@@ -871,11 +884,10 @@ export function Dashboard({
                   })}
                 </tbody>
               </table>
-            </div>
           </div>
 
-          <div className="md:hidden space-y-3">
-            {filtered.map((resource) => {
+          <div className="md:hidden space-y-3 p-3 sm:p-4 bg-surface-container-low/20">
+            {paginatedFiltered.map((resource) => {
               const locked = false;
               const linkedTags = resource.tag_ids.slice(0, 2).map((tagId) => tagMap[tagId]);
 
@@ -929,12 +941,25 @@ export function Dashboard({
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-lg flex items-center justify-center active:scale-90 transition-transform z-40"
+              className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-lg flex items-center justify-center active:scale-90 transition-transform z-40 md:hidden"
             >
               <Plus className="w-7 h-7" />
             </button>
           </div>
-        </>
+
+          <ListPaginationFooter
+            entityLabel="resources"
+            totalItems={filteredTotal}
+            sliceStart={sliceStart}
+            rangeEnd={rangeEnd}
+            page={page}
+            safePage={safePage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
       )}
 
       <ResourceFormModal
