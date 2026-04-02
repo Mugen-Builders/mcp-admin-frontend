@@ -236,6 +236,10 @@ export function listAdmins(token: string) {
   return request<AdminUser[]>('/api/v1/admin/?limit=1000', {}, token);
 }
 
+export function postAdminPresence(token: string) {
+  return request<void>('/api/v1/admin/presence', { method: 'POST' }, token);
+}
+
 export function createAdmin(token: string, payload: CreateAdminPayload) {
   return request<AdminUser>('/api/v1/admin/', {
     method: 'POST',

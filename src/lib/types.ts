@@ -9,6 +9,8 @@ export type AdminUser = {
   is_active: boolean;
   is_superuser: boolean;
   is_verified: boolean;
+  last_seen_at?: string | null;
+  is_online?: boolean;
 };
 
 export type AuthToken = {

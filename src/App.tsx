@@ -31,6 +31,7 @@ import {
   deleteSource,
   deleteTag,
   listAdmins,
+  postAdminPresence,
   listAudits,
   listDocRoutes,
   listRepositories,
@@ -65,6 +66,7 @@ import {
   Tag,
   ToastTone,
   View,
+  StoredSession,
 } from "./lib/types";
 import { getErrorMessage } from "./lib/utils";
 
@@ -151,6 +153,52 @@ export default function App() {
 
     void refreshAllData(token, true);
   }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      return undefined;
+    }
+
+    const sendPresence = () => {
+      void postAdminPresence(token)
+        .then(() => {
+          setSession((prev) => {
+            if (!prev) {
+              return prev;
+            }
+            const next: StoredSession = {
+              ...prev,
+              admin: {
+                ...prev.admin,
+                is_online: true,
+                last_seen_at: new Date().toISOString(),
+              },
+            };
+            storeSession(next);
+            return next;
+          });
+        })
+        .catch(() => {});
+    };
+    sendPresence();
+    const intervalId = window.setInterval(sendPresence, 45_000);
+    return () => window.clearInterval(intervalId);
+  }, [token]);
+
+  useEffect(() => {
+    if (!token || view !== "admin") {
+      return undefined;
+    }
+
+    const refreshAdmins = () => {
+      void listAdmins(token)
+        .then((data) => setAdmins(ensureArray<AdminUser>(data, "admins")))
+        .catch(() => {});
+    };
+    refreshAdmins();
+    const intervalId = window.setInterval(refreshAdmins, 30_000);
+    return () => window.clearInterval(intervalId);
+  }, [token, view]);
 
   useEffect(() => {
     if (!selectedResource) {
