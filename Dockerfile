@@ -1,6 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS builder
+ARG DEBIAN_RELEASE_NAME=trixie
+
+ARG NODE_VERSION=22
+ARG NODE_IMAGE=node:${NODE_VERSION}-${DEBIAN_RELEASE_NAME}-slim
+
+FROM ${NODE_IMAGE} AS builder
 
 WORKDIR /app
 
