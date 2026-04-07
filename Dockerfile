@@ -2,6 +2,9 @@
 
 ARG DEBIAN_RELEASE_NAME=trixie
 
+ARG NGINX_VERSION=1.29
+ARG NGINX_IMAGE=nginx:${NGINX_VERSION}-${DEBIAN_RELEASE_NAME}
+
 ARG NODE_VERSION=22
 ARG NODE_IMAGE=node:${NODE_VERSION}-${DEBIAN_RELEASE_NAME}-slim
 
@@ -18,7 +21,7 @@ COPY src ./src
 
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
+FROM ${NGINX_IMAGE} AS runtime
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY env.template.js /usr/share/nginx/html/config.template.js
