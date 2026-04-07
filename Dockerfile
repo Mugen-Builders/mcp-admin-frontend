@@ -21,6 +21,9 @@ COPY src ./src
 
 RUN npm run build
 
+FROM scratch AS static
+COPY --from=builder /app/dist /app/dist
+
 FROM ${NGINX_IMAGE} AS runtime
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
