@@ -10,7 +10,7 @@ concurrency:
 
 env:
   FLY_APP_NAME: cartesi-mcp-frontend
-  FLY_ORG: mmugen-builders
+  FLY_ORG: mugen-builders
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
@@ -48,8 +48,6 @@ jobs:
             --stage \
             VITE_ADMIN_API_BASE_URL="$VITE_ADMIN_API_BASE_URL" \
             APP_ENV="$APP_ENV"
-
-          flyctl secrets deploy --app "$FLY_APP_NAME"
 
       - name: Deploy release image to existing Fly.io app
         env:
