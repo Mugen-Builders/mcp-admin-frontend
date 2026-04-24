@@ -26,7 +26,8 @@ COPY --from=builder /app/dist /app/dist
 
 FROM ${NGINX_IMAGE} AS runtime
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
+RUN rm -f /etc/nginx/conf.d/default.conf
 COPY env.template.js /usr/share/nginx/html/config.template.js
 COPY docker-entrypoint.sh /docker-entrypoint.d/40-env-config.sh
 COPY --from=builder /app/dist /usr/share/nginx/html

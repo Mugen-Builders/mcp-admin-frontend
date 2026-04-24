@@ -1,0 +1,17 @@
+# Used by `fly deploy --image` in CI. Without this file, an app with no machines
+# cannot be deployed (Fly has nothing to copy config from).
+
+app = "cartesi-mcp-frontend"
+primary_region = "gru"
+
+[http_service]
+internal_port = 80
+force_https = true
+auto_stop_machines = "stop"
+auto_start_machines = true
+min_machines_running = 0
+
+[[vm]]
+memory = "256mb"
+cpu_kind = "shared"
+cpus = 1
