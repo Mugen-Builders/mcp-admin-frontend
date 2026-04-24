@@ -55,7 +55,6 @@ jobs:
         run: |
           flyctl deploy \
             --app "$FLY_APP_NAME" \
-            --org "$FLY_ORG" \
             --image "$IMAGE_NAME:${{ steps.version.outputs.version }}" \
             --strategy rolling \
             --wait-timeout 300
