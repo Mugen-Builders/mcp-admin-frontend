@@ -18,6 +18,7 @@ import {
 
 import {
   AdminUser,
+  ArticlePayload,
   AuditEntry,
   DocRoute,
   DocRoutePayload,
@@ -25,6 +26,7 @@ import {
   DocRouteUploadSummary,
   Resource,
   ResourceUpdatePayload,
+  SkillPayload,
   Source,
   Tag,
 } from '../lib/types';
@@ -42,6 +44,7 @@ import { EmptyState, InlineAlert, LoadingState } from './shared/States';
 
 type ResourceDetailProps = {
   resource: Resource;
+  resourceExtendedContent?: { kind: 'article' | 'skill'; id: string; title: string; body: string; year_published?: number | null } | null;
   audits: AuditEntry[];
   docRoutes: DocRoute[];
   sources: Source[];
@@ -53,6 +56,8 @@ type ResourceDetailProps = {
   isLoadingDocRoutes?: boolean;
   onBack: () => void;
   onUpdateResource: (resourceId: string, payload: ResourceUpdatePayload) => Promise<void>;
+  onUpdateArticleFromResource?: (articleId: string, payload: ArticlePayload) => Promise<void>;
+  onUpdateSkillFromResource?: (skillId: string, payload: SkillPayload) => Promise<void>;
   onDeleteResource: (resource: Resource) => Promise<void>;
   onCreateDocRoute: (payload: DocRoutePayload) => Promise<void>;
   onUpdateDocRoute: (docRouteId: string, payload: DocRouteUpdatePayload) => Promise<void>;
@@ -67,6 +72,7 @@ type DetailFormValues = {
   source_id: string;
   tag_ids: string[];
   is_documentation: boolean;
+  body: string;
 };
 
 type DocRouteFormValues = {
@@ -76,7 +82,7 @@ type DocRouteFormValues = {
   description: string;
 };
 
-function buildFormValues(resource: Resource): DetailFormValues {
+function buildFormValues(resource: Resource, body?: string): DetailFormValues {
   return {
     title: resource.title,
     url: resource.url,
@@ -84,6 +90,7 @@ function buildFormValues(resource: Resource): DetailFormValues {
     source_id: resource.source_id,
     tag_ids: resource.tag_ids,
     is_documentation: resource.is_documentation,
+    body: body ?? '',
   };
 }
 
@@ -98,6 +105,7 @@ function buildDocRouteFormValues(docRoute?: DocRoute | null): DocRouteFormValues
 
 export function ResourceDetail({
   resource,
+  resourceExtendedContent = null,
   audits,
   docRoutes,
   sources,
@@ -109,6 +117,8 @@ export function ResourceDetail({
   isLoadingDocRoutes = false,
   onBack,
   onUpdateResource,
+  onUpdateArticleFromResource,
+  onUpdateSkillFromResource,
   onDeleteResource,
   onCreateDocRoute,
   onUpdateDocRoute,
@@ -116,7 +126,7 @@ export function ResourceDetail({
   onUploadDocRoutesCsv,
 }: ResourceDetailProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formValues, setFormValues] = useState<DetailFormValues>(buildFormValues(resource));
+  const [formValues, setFormValues] = useState<DetailFormValues>(buildFormValues(resource, resourceExtendedContent?.body));
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [docsViewerOpen, setDocsViewerOpen] = useState(false);
@@ -130,6 +140,9 @@ export function ResourceDetail({
   const [activeDocSectionIndex, setActiveDocSectionIndex] = useState(0);
 
   const editable = Boolean(currentAdmin);
+  const isArticleResource = resourceExtendedContent?.kind === 'article';
+  const isSkillResource = resourceExtendedContent?.kind === 'skill';
+  const isExtendedResource = isArticleResource || isSkillResource;
   const source = sources.find((item) => item.id === resource.source_id);
   const linkedTags = tags.filter((tag) => resource.tag_ids.includes(tag.id));
   const adminNames = useMemo(
@@ -161,14 +174,37 @@ export function ResourceDetail({
     event.preventDefault();
 
     try {
-      await onUpdateResource(resource.id, {
-        title: formValues.title.trim(),
-        url: formValues.url.trim(),
-        description: formValues.description.trim() || null,
-        source_id: formValues.source_id,
-        is_documentation: formValues.is_documentation,
-        tag_ids: formValues.tag_ids,
-      });
+      if (isArticleResource && resourceExtendedContent && onUpdateArticleFromResource) {
+        await onUpdateArticleFromResource(resourceExtendedContent.id, {
+          title: formValues.title.trim(),
+          url: formValues.url.trim(),
+          description: formValues.description.trim() || null,
+          source_id: formValues.source_id,
+          is_documentation: false,
+          tag_ids: formValues.tag_ids,
+          body: formValues.body.trim(),
+          year_published: resourceExtendedContent.year_published ?? null,
+        });
+      } else if (isSkillResource && resourceExtendedContent && onUpdateSkillFromResource) {
+        await onUpdateSkillFromResource(resourceExtendedContent.id, {
+          title: formValues.title.trim(),
+          url: formValues.url.trim(),
+          description: formValues.description.trim() || null,
+          source_id: formValues.source_id,
+          is_documentation: false,
+          tag_ids: formValues.tag_ids,
+          body: formValues.body.trim(),
+        });
+      } else {
+        await onUpdateResource(resource.id, {
+          title: formValues.title.trim(),
+          url: formValues.url.trim(),
+          description: formValues.description.trim() || null,
+          source_id: formValues.source_id,
+          is_documentation: formValues.is_documentation,
+          tag_ids: formValues.tag_ids,
+        });
+      }
       setFormError(null);
       setIsEditing(false);
     } catch (error) {
@@ -271,7 +307,7 @@ export function ResourceDetail({
             type="button"
             disabled={!editable}
             onClick={() => {
-              setFormValues(buildFormValues(resource));
+              setFormValues(buildFormValues(resource, resourceExtendedContent?.body));
               setIsEditing(true);
             }}
             className="w-full md:w-auto bg-primary text-on-primary px-5 py-2.5 rounded-lg font-bold text-sm shadow-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60"
@@ -321,6 +357,18 @@ export function ResourceDetail({
               </div>
             </div>
           </div>
+
+          {resourceExtendedContent ? (
+            <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm ring-1 ring-outline-variant/10">
+              <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                {resourceExtendedContent.title}
+              </h3>
+              <div className="rounded-lg border border-outline-variant/10 bg-surface-container-low p-4 text-sm text-on-surface whitespace-pre-wrap leading-relaxed">
+                {resourceExtendedContent.body || 'No content available yet.'}
+              </div>
+            </div>
+          ) : null}
 
           {resource.is_documentation ? (
             <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm ring-1 ring-outline-variant/10">
@@ -712,18 +760,32 @@ export function ResourceDetail({
             </select>
           </div>
 
-          <label className="flex items-center gap-3 rounded-xl bg-surface-container-low px-4 py-3 text-sm">
-            <input
-              type="checkbox"
-              checked={formValues.is_documentation}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  is_documentation: event.target.checked,
-                }))}
-            />
-            <span>Treat this resource as documentation and enable docs subsections</span>
-          </label>
+          {isExtendedResource ? (
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-outline">
+                {isArticleResource ? 'Article Body' : 'Skill Content'}
+              </label>
+              <textarea
+                rows={10}
+                value={formValues.body}
+                onChange={(event) => setFormValues((current) => ({ ...current, body: event.target.value }))}
+                className="w-full rounded-xl bg-surface-container-low border border-outline-variant/20 px-4 py-3 text-sm resize-y"
+              />
+            </div>
+          ) : (
+            <label className="flex items-center gap-3 rounded-xl bg-surface-container-low px-4 py-3 text-sm">
+              <input
+                type="checkbox"
+                checked={formValues.is_documentation}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    is_documentation: event.target.checked,
+                  }))}
+              />
+              <span>Treat this resource as documentation and enable docs subsections</span>
+            </label>
+          )}
 
           <div className="space-y-2">
             <label className="text-[11px] font-bold uppercase tracking-wider text-outline" htmlFor="resource-detail-tags-search">

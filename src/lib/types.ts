@@ -1,4 +1,14 @@
-export type View = 'dashboard' | 'detail' | 'admin' | 'sources' | 'repositories' | 'tags';
+export type View =
+  | 'dashboard'
+  | 'detail'
+  | 'admin'
+  | 'sources'
+  | 'repositories'
+  | 'tags'
+  | 'articles'
+  | 'article-detail'
+  | 'skills'
+  | 'skill-detail';
 
 export type ToastTone = 'success' | 'error' | 'info';
 
@@ -49,12 +59,16 @@ export type Resource = {
   url: string;
   description: string | null;
   is_repository: boolean;
+  is_article: boolean;
+  is_skill: boolean;
   is_documentation: boolean;
   source_id: string;
   created_by: string;
   created_at: string;
   tag_ids: string[];
   repository_id: string | null;
+  article_id: string | null;
+  skill_id: string | null;
   last_synced_at: string | null;
 };
 
@@ -71,6 +85,39 @@ export type Repository = {
   created_at: string;
   tag_ids: string[];
   last_synced_at: string | null;
+};
+
+export type Article = {
+  id: string;
+  resource_id: string;
+  title: string;
+  url: string;
+  description: string | null;
+  source_id: string;
+  is_article: boolean;
+  is_documentation: boolean;
+  created_by: string;
+  created_at: string;
+  tag_ids: string[];
+  body: string;
+  year_published: number | null;
+  last_updated_at: string | null;
+};
+
+export type Skill = {
+  id: string;
+  resource_id: string;
+  title: string;
+  url: string;
+  description: string | null;
+  source_id: string;
+  is_skill: boolean;
+  is_documentation: boolean;
+  created_by: string;
+  created_at: string;
+  tag_ids: string[];
+  body: string;
+  last_updated_at: string | null;
 };
 
 export type DocRoute = {
@@ -154,6 +201,48 @@ export type ResourceUpdatePayload = {
   is_documentation?: boolean;
   tag_ids?: string[];
   last_synced_at?: string | null;
+};
+
+export type ArticlePayload = {
+  title: string;
+  url: string;
+  description?: string | null;
+  source_id: string;
+  is_documentation: boolean;
+  tag_ids: string[];
+  body: string;
+  year_published?: number | null;
+};
+
+export type ArticleUpdatePayload = {
+  title?: string;
+  url?: string;
+  description?: string | null;
+  source_id?: string;
+  is_documentation?: boolean;
+  tag_ids?: string[];
+  body?: string;
+  year_published?: number | null;
+};
+
+export type SkillPayload = {
+  title: string;
+  url: string;
+  description?: string | null;
+  source_id: string;
+  is_documentation: boolean;
+  tag_ids: string[];
+  body: string;
+};
+
+export type SkillUpdatePayload = {
+  title?: string;
+  url?: string;
+  description?: string | null;
+  source_id?: string;
+  is_documentation?: boolean;
+  tag_ids?: string[];
+  body?: string;
 };
 
 export type DocRoutePayload = {

@@ -11,6 +11,10 @@ import { AdminDashboard } from "./components/AdminDashboard";
 import { Sources } from "./components/Sources";
 import { Tags } from "./components/Tags";
 import { Repositories } from "./components/Repositories";
+import { Articles } from "./components/Articles";
+import { Skills } from "./components/Skills";
+import { ArticleDetail } from "./components/ArticleDetail";
+import { SkillDetail } from "./components/SkillDetail";
 import {
   clearStoredSession,
   loadStoredSession,
@@ -19,22 +23,28 @@ import {
 import {
   ApiError,
   createAdmin,
+  createArticle,
   createDocRoute,
   createRepository,
   createResource,
+  createSkill,
   createSource,
   createTag,
   deleteAdmin,
+  deleteArticle,
   deleteDocRoute,
   deleteRepository,
   deleteResource,
+  deleteSkill,
   deleteSource,
   deleteTag,
   listAdmins,
   postAdminPresence,
   listAudits,
+  listArticles,
   listDocRoutes,
   listRepositories,
+  listSkills,
   uploadDocRoutesCsv,
   listResources,
   listSources,
@@ -42,15 +52,19 @@ import {
   requestOtp,
   uploadResourcesCsv,
   updateAdmin,
+  updateArticle,
   updateDocRoute,
   updateRepository,
   updateResource,
+  updateSkill,
   updateSource,
   updateTag,
   verifyOtp,
 } from "./lib/api";
 import {
   AdminUser,
+  Article,
+  ArticlePayload,
   AuditEntry,
   DocRoute,
   DocRoutePayload,
@@ -58,6 +72,8 @@ import {
   DocRouteUploadSummary,
   Repository,
   RepositoryPayload,
+  Skill,
+  SkillPayload,
   Resource,
   ResourcePayload,
   ResourceUploadSummary,
@@ -71,7 +87,7 @@ import {
 import { getErrorMessage } from "./lib/utils";
 
 type AuthScreen = "login" | "otp";
-type DetailOrigin = "dashboard" | "repositories";
+type DetailOrigin = "dashboard" | "repositories" | "articles" | "skills";
 
 type ToastState = {
   tone: ToastTone;
@@ -95,13 +111,59 @@ function repositoryToResource(repository: Repository): Resource {
     url: repository.url,
     description: repository.description,
     is_repository: true,
+    is_article: false,
+    is_skill: false,
     is_documentation: repository.is_documentation,
     source_id: repository.source_id,
     created_by: repository.created_by,
     created_at: repository.created_at,
     tag_ids: repository.tag_ids,
     repository_id: repository.id,
+    article_id: null,
+    skill_id: null,
     last_synced_at: repository.last_synced_at,
+  };
+}
+
+function articleToResource(article: Article): Resource {
+  return {
+    id: article.resource_id,
+    title: article.title,
+    url: article.url,
+    description: article.description,
+    is_repository: false,
+    is_article: true,
+    is_skill: false,
+    is_documentation: article.is_documentation,
+    source_id: article.source_id,
+    created_by: article.created_by,
+    created_at: article.created_at,
+    tag_ids: article.tag_ids,
+    repository_id: null,
+    article_id: article.id,
+    skill_id: null,
+    last_synced_at: null,
+  };
+}
+
+function skillToResource(skill: Skill): Resource {
+  return {
+    id: skill.resource_id,
+    title: skill.title,
+    url: skill.url,
+    description: skill.description,
+    is_repository: false,
+    is_article: false,
+    is_skill: true,
+    is_documentation: skill.is_documentation,
+    source_id: skill.source_id,
+    created_by: skill.created_by,
+    created_at: skill.created_at,
+    tag_ids: skill.tag_ids,
+    repository_id: null,
+    article_id: null,
+    skill_id: skill.id,
+    last_synced_at: null,
   };
 }
 
@@ -127,6 +189,10 @@ export default function App() {
 
   const [resources, setResources] = useState<Resource[]>([]);
   const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -135,6 +201,37 @@ export default function App() {
 
   const currentAdmin = session?.admin ?? null;
   const token = session?.token ?? null;
+  const selectedResourceExtendedContent = useMemo(() => {
+    if (!selectedResource) {
+      return null;
+    }
+    if (selectedResource.is_article) {
+      const article = articles.find((entry) => entry.resource_id === selectedResource.id);
+      if (!article) {
+        return null;
+      }
+      return {
+        kind: "article" as const,
+        id: article.id,
+        title: "Article Body",
+        body: article.body,
+        year_published: article.year_published,
+      };
+    }
+    if (selectedResource.is_skill) {
+      const skill = skills.find((entry) => entry.resource_id === selectedResource.id);
+      if (!skill) {
+        return null;
+      }
+      return {
+        kind: "skill" as const,
+        id: skill.id,
+        title: "Skill Content",
+        body: skill.body,
+      };
+    }
+    return null;
+  }, [articles, selectedResource, skills]);
 
   useEffect(() => {
     if (!toast) {
@@ -220,13 +317,20 @@ export default function App() {
   }, [detailOrigin, resources, selectedResource, view]);
 
   useEffect(() => {
-    if (!token || view !== "detail" || !selectedResource) {
+    const detailResourceId =
+      view === "detail"
+        ? selectedResource?.id
+        : view === "article-detail"
+          ? selectedArticle?.resource_id
+          : view === "skill-detail"
+            ? selectedSkill?.resource_id
+            : null;
+    if (!token || !detailResourceId) {
       setAudits([]);
       return;
     }
-
-    void refreshAudits(token, selectedResource.id);
-  }, [selectedResource, token, view]);
+    void refreshAudits(token, detailResourceId);
+  }, [selectedArticle, selectedResource, selectedSkill, token, view]);
 
   useEffect(() => {
     if (
@@ -255,12 +359,16 @@ export default function App() {
         tagsData,
         resourcesData,
         repositoriesData,
+        articlesData,
+        skillsData,
         adminsData,
       ] = await Promise.all([
         listSources(currentToken),
         listTags(currentToken),
         listResources(currentToken),
         listRepositories(currentToken),
+        listArticles(currentToken),
+        listSkills(currentToken),
         listAdmins(currentToken),
       ]);
 
@@ -268,6 +376,8 @@ export default function App() {
       setTags(ensureArray<Tag>(tagsData, "tags"));
       setResources(ensureArray<Resource>(resourcesData, "resources"));
       setRepositories(ensureArray<Repository>(repositoriesData, "repositories"));
+      setArticles(ensureArray<Article>(articlesData, "articles"));
+      setSkills(ensureArray<Skill>(skillsData, "skills"));
       setAdmins(ensureArray<AdminUser>(adminsData, "admins"));
     } catch (error) {
       if (!handleAuthFailure(error)) {
@@ -352,12 +462,27 @@ export default function App() {
   }
 
   function handleAuthFailure(error: unknown) {
-    if (
-      error instanceof ApiError &&
-      (error.status === 401 || error.status === 403)
-    ) {
-      logout("Your session expired. Sign in again to continue.");
-      return true;
+    if (error instanceof ApiError) {
+      if (error.status === 401) {
+        logout("Your session expired. Sign in again to continue.");
+        return true;
+      }
+
+      // Do not force logout on generic 403 responses (permission/policy errors).
+      // These should surface as regular API errors so the user can continue.
+      if (error.status === 403) {
+        const detail = error.message.toLowerCase();
+        const looksLikeExpiredSession =
+          detail.includes("not authenticated") ||
+          detail.includes("invalid token") ||
+          detail.includes("token expired") ||
+          detail.includes("could not validate credentials");
+
+        if (looksLikeExpiredSession) {
+          logout("Your session expired. Sign in again to continue.");
+          return true;
+        }
+      }
     }
 
     return false;
@@ -373,6 +498,10 @@ export default function App() {
     setDocRoutes([]);
     setResources([]);
     setRepositories([]);
+    setArticles([]);
+    setSkills([]);
+    setSelectedArticle(null);
+    setSelectedSkill(null);
     setSources([]);
     setTags([]);
     setAdmins([]);
@@ -610,6 +739,7 @@ export default function App() {
               {view === "detail" && selectedResource && currentAdmin ? (
                 <ResourceDetail
                   resource={selectedResource}
+                  resourceExtendedContent={selectedResourceExtendedContent}
                   audits={audits}
                   docRoutes={docRoutes}
                   sources={sources}
@@ -627,6 +757,24 @@ export default function App() {
                           () => undefined,
                         ),
                       "Resource updated.",
+                    )
+                  }
+                  onUpdateArticleFromResource={(articleId, payload) =>
+                    runMutation(
+                      () =>
+                        updateArticle(token!, articleId, payload).then(
+                          () => undefined,
+                        ),
+                      "Article updated.",
+                    )
+                  }
+                  onUpdateSkillFromResource={(skillId, payload) =>
+                    runMutation(
+                      () =>
+                        updateSkill(token!, skillId, payload).then(
+                          () => undefined,
+                        ),
+                      "Skill updated.",
                     )
                   }
                   onDeleteResource={(resource) =>
@@ -768,6 +916,146 @@ export default function App() {
                       () => deleteRepository(token!, repository.id),
                       `${repository.title} deleted.`,
                     )
+                  }
+                />
+              ) : null}
+
+              {view === "articles" && currentAdmin ? (
+                <Articles
+                  articles={articles}
+                  sources={sources}
+                  tags={tags}
+                  currentAdmin={currentAdmin}
+                  loading={isRefreshing && articles.length === 0}
+                  submitting={isSubmitting}
+                  onViewDetail={(article) => {
+                    setSelectedArticle(article);
+                    setSelectedResource(articleToResource(article));
+                    setDetailOrigin("articles");
+                    setView("article-detail");
+                  }}
+                  onCreateArticle={(payload: ArticlePayload) =>
+                    runMutation(
+                      () => createArticle(token!, payload).then(() => undefined),
+                      "Article created.",
+                    )
+                  }
+                  onUpdateArticle={(articleId: string, payload: ArticlePayload) =>
+                    runMutation(
+                      () => updateArticle(token!, articleId, payload).then(() => undefined),
+                      "Article updated.",
+                    )
+                  }
+                  onDeleteArticle={(article) =>
+                    runMutation(
+                      () => deleteArticle(token!, article.id),
+                      `${article.title} deleted.`,
+                    )
+                  }
+                />
+              ) : null}
+
+              {view === "article-detail" && selectedArticle && currentAdmin ? (
+                <ArticleDetail
+                  article={selectedArticle}
+                  audits={audits}
+                  sources={sources}
+                  tags={tags}
+                  admins={admins}
+                  currentAdmin={currentAdmin}
+                  isSubmitting={isSubmitting}
+                  isLoadingAudits={isLoadingAudits}
+                  onBack={() => setView("articles")}
+                  onUpdateArticle={(articleId, payload) =>
+                    runMutation(async () => {
+                      await updateArticle(token!, articleId, payload);
+                      const updated = await listArticles(token!);
+                      const next = ensureArray<Article>(updated, "articles");
+                      setArticles(next);
+                      const match = next.find((entry) => entry.id === articleId) ?? null;
+                      setSelectedArticle(match);
+                      if (match) {
+                        setSelectedResource(articleToResource(match));
+                      }
+                    }, "Article updated.")
+                  }
+                  onDeleteArticle={(article) =>
+                    runMutation(async () => {
+                      await deleteArticle(token!, article.id);
+                      setSelectedArticle(null);
+                      setSelectedResource(null);
+                      setView("articles");
+                    }, `${article.title} deleted.`)
+                  }
+                />
+              ) : null}
+
+              {view === "skills" && currentAdmin ? (
+                <Skills
+                  skills={skills}
+                  sources={sources}
+                  tags={tags}
+                  currentAdmin={currentAdmin}
+                  loading={isRefreshing && skills.length === 0}
+                  submitting={isSubmitting}
+                  onViewDetail={(skill) => {
+                    setSelectedSkill(skill);
+                    setSelectedResource(skillToResource(skill));
+                    setDetailOrigin("skills");
+                    setView("skill-detail");
+                  }}
+                  onCreateSkill={(payload: SkillPayload) =>
+                    runMutation(
+                      () => createSkill(token!, payload).then(() => undefined),
+                      "Skill created.",
+                    )
+                  }
+                  onUpdateSkill={(skillId: string, payload: SkillPayload) =>
+                    runMutation(
+                      () => updateSkill(token!, skillId, payload).then(() => undefined),
+                      "Skill updated.",
+                    )
+                  }
+                  onDeleteSkill={(skill) =>
+                    runMutation(
+                      () => deleteSkill(token!, skill.id),
+                      `${skill.title} deleted.`,
+                    )
+                  }
+                />
+              ) : null}
+
+              {view === "skill-detail" && selectedSkill && currentAdmin ? (
+                <SkillDetail
+                  skill={selectedSkill}
+                  audits={audits}
+                  sources={sources}
+                  tags={tags}
+                  admins={admins}
+                  currentAdmin={currentAdmin}
+                  isSubmitting={isSubmitting}
+                  isLoadingAudits={isLoadingAudits}
+                  onBack={() => setView("skills")}
+                  onUpdateSkill={(skillId, payload) =>
+                    runMutation(async () => {
+                      await updateSkill(token!, skillId, payload);
+                      const updated = await listSkills(token!);
+                      const next = ensureArray<Skill>(updated, "skills");
+                      setSkills(next);
+                      const match = next.find((entry) => entry.id === skillId) ?? null;
+                      setSelectedSkill(match);
+                      if (match) {
+                        setSelectedResource(skillToResource(match));
+                      }
+                    }, "Skill updated.")
+                  }
+                  onDeleteSkill={(skill) =>
+                    runMutation(async () => {
+                      await deleteSkill(token!, skill.id);
+                      setSelectedSkill(null);
+                      setSelectedResource(null);
+                      setView("skills");
+                    }, `${skill.title} deleted.`)
                   }
                 />
               ) : null}

@@ -1,4 +1,7 @@
 import {
+  Article,
+  ArticlePayload,
+  ArticleUpdatePayload,
   AdminUser,
   AuditEntry,
   DocRoute,
@@ -13,6 +16,9 @@ import {
   ResourceUploadSummary,
   DocRouteUploadSummary,
   ResourceUpdatePayload,
+  Skill,
+  SkillPayload,
+  SkillUpdatePayload,
   Source,
   Tag,
   UpdateAdminPayload,
@@ -152,6 +158,50 @@ export function updateRepository(token: string, repositoryId: string, payload: R
 
 export function deleteRepository(token: string, repositoryId: string) {
   return request<void>(`/api/v1/repositories/${repositoryId}`, { method: 'DELETE' }, token);
+}
+
+export function listArticles(token: string) {
+  return request<Article[]>('/api/v1/articles/?limit=1000', {}, token);
+}
+
+export function createArticle(token: string, payload: ArticlePayload) {
+  return request<Article>('/api/v1/articles/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, token);
+}
+
+export function updateArticle(token: string, articleId: string, payload: ArticleUpdatePayload) {
+  return request<Article>(`/api/v1/articles/${articleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }, token);
+}
+
+export function deleteArticle(token: string, articleId: string) {
+  return request<void>(`/api/v1/articles/${articleId}`, { method: 'DELETE' }, token);
+}
+
+export function listSkills(token: string) {
+  return request<Skill[]>('/api/v1/skills/?limit=1000', {}, token);
+}
+
+export function createSkill(token: string, payload: SkillPayload) {
+  return request<Skill>('/api/v1/skills/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, token);
+}
+
+export function updateSkill(token: string, skillId: string, payload: SkillUpdatePayload) {
+  return request<Skill>(`/api/v1/skills/${skillId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }, token);
+}
+
+export function deleteSkill(token: string, skillId: string) {
+  return request<void>(`/api/v1/skills/${skillId}`, { method: 'DELETE' }, token);
 }
 
 export function listDocRoutes(token: string, resourceId: string) {

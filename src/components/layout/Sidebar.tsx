@@ -3,7 +3,9 @@ import {
   Database,
   FileCode2,
   LogOut,
+  Newspaper,
   ShieldCheck,
+  Sparkles,
   Tags,
   UserCircle,
 } from 'lucide-react';
@@ -69,6 +71,28 @@ export function Sidebar({ currentView, currentAdmin, onNavigate, onLogout }: Sid
         >
           <Database className="w-5 h-5" />
           <span>Repositories</span>
+        </button>
+        <button
+          onClick={() => onNavigate('articles')}
+          className={`w-full flex items-center gap-3 py-2 px-4 transition-all font-sans text-xs font-medium uppercase tracking-wider rounded-lg ${
+            currentView === 'articles' || currentView === 'article-detail'
+              ? 'text-white bg-primary/20 ring-1 ring-primary/25 shadow-[0_8px_24px_rgba(0,74,198,0.18)]'
+              : 'text-slate-300 hover:text-white hover:bg-white/6'
+          }`}
+        >
+          <Newspaper className="w-5 h-5" />
+          <span>Articles</span>
+        </button>
+        <button
+          onClick={() => onNavigate('skills')}
+          className={`w-full flex items-center gap-3 py-2 px-4 transition-all font-sans text-xs font-medium uppercase tracking-wider rounded-lg ${
+            currentView === 'skills' || currentView === 'skill-detail'
+              ? 'text-white bg-primary/20 ring-1 ring-primary/25 shadow-[0_8px_24px_rgba(0,74,198,0.18)]'
+              : 'text-slate-300 hover:text-white hover:bg-white/6'
+          }`}
+        >
+          <Sparkles className="w-5 h-5" />
+          <span>Skills</span>
         </button>
       </nav>
       <div className="mt-auto pt-6 border-t border-white/10 space-y-2">

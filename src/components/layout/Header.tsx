@@ -8,6 +8,10 @@ const VIEW_LABELS: Record<View, string> = {
   detail: "Resource Details",
   sources: "Sources",
   repositories: "Repositories",
+  articles: "Articles",
+  "article-detail": "Article Details",
+  skills: "Skills",
+  "skill-detail": "Skill Details",
   tags: "Tags",
   admin: "Administrators",
 };
