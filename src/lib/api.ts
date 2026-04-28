@@ -29,7 +29,7 @@ const runtimeConfig =
     ? (window as Window & {__APP_CONFIG__?: {ADMIN_API_BASE_URL?: string}}).__APP_CONFIG__
     : undefined;
 
-const API_BASE_URL = (runtimeConfig?.ADMIN_API_BASE_URL ?? import.meta.env.VITE_ADMIN_API_BASE_URL ?? 'http://localhost:8000').replace(
+const API_BASE_URL = (runtimeConfig?.ADMIN_API_BASE_URL ?? 'http://localhost:8000').replace(
   /\/$/,
   '',
 );

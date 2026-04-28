@@ -76,11 +76,11 @@ Built with **React 19**, **TypeScript**, **Vite 6**, and **Tailwind CSS 4**.
 
 ### Local development (Vite)
 
-| Variable                  | Required    | Description                                                                                                                               |
-| ------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_ADMIN_API_BASE_URL` | Recommended | Base URL of the Admin API, e.g. `http://localhost:8000`. No trailing slash. If omitted, the client falls back to `http://localhost:8000`. |
+| Variable             | Required | Description                                                                                                                          |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `ADMIN_API_BASE_URL` | Optional | Base URL of the Admin API, e.g. `http://localhost:8000`. No trailing slash. If omitted, the client falls back to `http://localhost:8000`. |
 
-Vite only exposes variables prefixed with `VITE_` to the client. Use `.env`, `.env.local`, or mode-specific files (`.env.development`, etc.). Secrets that must not ship to the browser do **not** belong in `VITE_*` variables.
+Use `.env`, `.env.local`, or mode-specific files (`.env.development`, etc.).
 
 **Optional (template / tooling):** `GEMINI_API_KEY` may appear in `vite.config.ts` from an earlier scaffold. The current application code does not call Gemini; you can ignore it unless you add features that need it.
 
@@ -193,7 +193,7 @@ Setting `ADMIN_API_BASE_URL` empty (as above) encourages same-origin `/api/...` 
 
 ## API integration
 
-- Base URL resolution order: **`window.__APP_CONFIG__.ADMIN_API_BASE_URL`** → **`import.meta.env.VITE_ADMIN_API_BASE_URL`** → default `http://localhost:8000`.
+- Base URL resolution order: **`window.__APP_CONFIG__.ADMIN_API_BASE_URL`** → default `http://localhost:8000`.
 - Trailing slashes on the base URL are stripped before requests.
 - Authenticated calls send **`Authorization: Bearer <token>`** from the stored session after OTP verification.
 
